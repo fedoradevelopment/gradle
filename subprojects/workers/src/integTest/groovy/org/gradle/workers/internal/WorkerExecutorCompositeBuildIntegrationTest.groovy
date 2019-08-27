@@ -67,7 +67,7 @@ class WorkerExecutorCompositeBuildIntegrationTest extends AbstractIntegrationSpe
             }
        
             dependencies {
-                compile "org.gradle.test:lib:1.0"
+                implementation "org.gradle.test:lib:1.0"
             }
 
             runWork.dependsOn compileJava

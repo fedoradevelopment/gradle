@@ -29,34 +29,32 @@ import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.internal.tasks.TaskExecuter;
 import org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter;
 import org.gradle.api.internal.tasks.execution.CleanupStaleOutputsExecuter;
+import org.gradle.api.internal.tasks.execution.DefaultEmptySourceTaskSkipper;
 import org.gradle.api.internal.tasks.execution.DefaultTaskCacheabilityResolver;
 import org.gradle.api.internal.tasks.execution.DefaultTaskSnapshotter;
+import org.gradle.api.internal.tasks.execution.EmptySourceTaskSkipper;
 import org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter;
 import org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter;
 import org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter;
-import org.gradle.api.internal.tasks.execution.ResolveAfterPreviousExecutionStateTaskExecuter;
-import org.gradle.api.internal.tasks.execution.ResolveBeforeExecutionOutputsTaskExecuter;
 import org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter;
-import org.gradle.api.internal.tasks.execution.SkipEmptySourceFilesTaskExecuter;
 import org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter;
 import org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter;
-import org.gradle.api.internal.tasks.execution.StartSnapshotTaskInputsBuildOperationTaskExecuter;
 import org.gradle.api.internal.tasks.execution.TaskCacheabilityResolver;
 import org.gradle.api.internal.tasks.execution.TaskSnapshotter;
-import org.gradle.api.internal.tasks.execution.ValidatingTaskExecuter;
 import org.gradle.api.internal.tasks.properties.PropertyWalker;
 import org.gradle.caching.internal.controller.BuildCacheController;
 import org.gradle.execution.taskgraph.TaskExecutionGraphInternal;
 import org.gradle.execution.taskgraph.TaskListenerInternal;
 import org.gradle.internal.cleanup.BuildOutputCleanupRegistry;
 import org.gradle.internal.event.ListenerManager;
-import org.gradle.internal.execution.AfterPreviousExecutionContext;
 import org.gradle.internal.execution.CachingResult;
+import org.gradle.internal.execution.ExecutionRequestContext;
 import org.gradle.internal.execution.OutputChangeListener;
 import org.gradle.internal.execution.WorkExecutor;
 import org.gradle.internal.execution.history.ExecutionHistoryStore;
 import org.gradle.internal.execution.history.OutputFilesRepository;
 import org.gradle.internal.file.DefaultReservedFileSystemLocationRegistry;
+import org.gradle.internal.file.Deleter;
 import org.gradle.internal.file.RelativeFilePathResolver;
 import org.gradle.internal.file.ReservedFileSystemLocation;
 import org.gradle.internal.file.ReservedFileSystemLocationRegistry;
@@ -92,9 +90,22 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
         return new DefaultReservedFileSystemLocationRegistry(reservedFileSystemLocations);
     }
 
+    EmptySourceTaskSkipper createEmptySourceTaskSkipper(
+        BuildOutputCleanupRegistry buildOutputCleanupRegistry,
+        Deleter deleter,
+        OutputChangeListener outputChangeListener,
+        TaskInputsListener taskInputsListener
+    ) {
+        return new DefaultEmptySourceTaskSkipper(
+            buildOutputCleanupRegistry,
+            deleter,
+            outputChangeListener,
+            taskInputsListener
+        );
+    }
+
     TaskExecuter createTaskExecuter(TaskExecutionModeResolver repository,
                                     BuildCacheController buildCacheController,
-                                    TaskInputsListener inputsListener,
                                     TaskActionListener actionListener,
                                     OutputChangeListener outputChangeListener,
                                     ClassLoaderHierarchyHasher classLoaderHierarchyHasher,
@@ -112,9 +123,11 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
                                     TaskExecutionListener taskExecutionListener,
                                     TaskListenerInternal taskListenerInternal,
                                     TaskCacheabilityResolver taskCacheabilityResolver,
-                                    WorkExecutor<AfterPreviousExecutionContext, CachingResult> workExecutor,
+                                    WorkExecutor<ExecutionRequestContext, CachingResult> workExecutor,
+                                    Deleter deleter,
+                                    ListenerManager listenerManager,
                                     ReservedFileSystemLocationRegistry reservedFileSystemLocationRegistry,
-                                    ListenerManager listenerManager
+                                    EmptySourceTaskSkipper emptySourceTaskSkipper
     ) {
 
         boolean buildCacheEnabled = buildCacheController.isEnabled();
@@ -132,18 +145,19 @@ public class ProjectExecutionServices extends DefaultServiceRegistry {
             fingerprinterRegistry,
             classLoaderHierarchyHasher,
             workExecutor,
-            listenerManager
+            listenerManager,
+            reservedFileSystemLocationRegistry,
+            emptySourceTaskSkipper,
+            fileCollectionFactory
         );
-        executer = new ValidatingTaskExecuter(executer, reservedFileSystemLocationRegistry);
-        executer = new SkipEmptySourceFilesTaskExecuter(inputsListener, executionHistoryStore, cleanupRegistry, outputChangeListener, executer);
-        executer = new ResolveBeforeExecutionOutputsTaskExecuter(taskSnapshotter, executer);
-        // TODO:lptr this should be added only if the scan plugin is applied, but SnapshotTaskInputsOperationIntegrationTest
-        // TODO:lptr expects it to be added also when the build cache is enabled (but not the scan plugin)
-        if (buildCacheEnabled || scanPluginApplied) {
-            executer = new StartSnapshotTaskInputsBuildOperationTaskExecuter(buildOperationExecutor, executer);
-        }
-        executer = new ResolveAfterPreviousExecutionStateTaskExecuter(executionHistoryStore, executer);
-        executer = new CleanupStaleOutputsExecuter(cleanupRegistry, outputFilesRepository, buildOperationExecutor, outputChangeListener, executer);
+        executer = new CleanupStaleOutputsExecuter(
+            buildOperationExecutor,
+            cleanupRegistry,
+            deleter,
+            outputChangeListener,
+            outputFilesRepository,
+            executer
+        );
         executer = new FinalizePropertiesTaskExecuter(executer);
         executer = new ResolveTaskExecutionModeExecuter(repository, fileCollectionFactory, propertyWalker, executer);
         executer = new SkipTaskWithNoActionsExecuter(taskExecutionGraph, executer);

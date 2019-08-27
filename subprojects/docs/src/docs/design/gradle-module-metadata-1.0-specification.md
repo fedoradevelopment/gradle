@@ -1,8 +1,8 @@
-# Gradle module metadata 1.0 specification
+# Gradle Module Metadata 1.0 specification
 
-Consumption of Gradle metadata is automatic. However publication needs to be enabled explicitly for any Gradle version prior to Gradle 6.
+Consumption of Gradle Module Metadata is automatic. However publication needs to be enabled explicitly for any Gradle version prior to Gradle 6.
 
-Publishing Gradle metadata can be enabled in Gradle settings file (`settings.gradle`):
+Publishing Gradle Module Metadata can be enabled in Gradle settings file (`settings.gradle`):
 
 ```
 enableFeaturePreview("GRADLE_METADATA")
@@ -138,7 +138,7 @@ This value, nested in elements of the `dependencies` or `dependencyConstraints` 
 - `requires`: optional. The required version for this dependency.
 - `prefers`: optional. The preferred version for this dependency.
 - `strictly`: optional. A strictly enforced version requirement for this dependency.
-- `rejects`: optional: An array of rejected versions for this dependency.
+- `rejects`: optional. An array of rejected versions for this dependency.
 
 #### `excludes` value
 
@@ -170,6 +170,12 @@ This value, nested in `variants`, must contain an array with zero or more elemen
 - `size`: The size of the file in bytes. A number.
 - `sha1`: The SHA1 hash of the file content. A hex string.
 - `md5`: The MD5 hash of the file content. A hex string.
+
+### Changelog
+
+#### 1.0
+
+- Initial release
 
 ## Example
 
@@ -239,6 +245,13 @@ This value, nested in `variants`, must contain an array with zero or more elemen
                     "group": "some.group", 
                     "module": "other-lib", 
                     "version": { "requires": "[3.0, 4.0)", "prefers": "3.4", "rejects": ["3.4.1"] } 
+                }
+            ],
+            "dependencyConstraints": [
+                { 
+                    "group": "some.group", 
+                    "module": "other-lib-2", 
+                    "version": { "requires": "1.0" } 
                 }
             ]
         }

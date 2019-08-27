@@ -180,8 +180,8 @@ class GradleKotlinDslIntegrationTest : AbstractPluginIntegrationTest() {
 
         requireGradleDistributionOnEmbeddedExecuter()
 
-        val differentKotlinVersion = "1.0.7"
-        val expectedKotlinCompilerVersionString = "1.0.7-release-1"
+        val differentKotlinVersion = "1.3.30"
+        val expectedKotlinCompilerVersionString = "1.3.30"
 
         assertNotEquals(embeddedKotlinVersion, differentKotlinVersion)
 
@@ -214,8 +214,6 @@ class GradleKotlinDslIntegrationTest : AbstractPluginIntegrationTest() {
                 }
             }
         """)
-
-        executer.expectDeprecationWarning()
 
         assertThat(
             build("print-kotlin-version").output,
@@ -861,6 +859,24 @@ class GradleKotlinDslIntegrationTest : AbstractPluginIntegrationTest() {
         assertThat(
             build("-q", "test").output.trim(),
             equalTo("default-value")
+        )
+    }
+
+    @Test
+    fun `can apply script plugin with package name`() {
+
+        withFile("gradle/script.gradle.kts", """
+            package gradle
+            task("ok") { doLast { println("ok!") } }
+        """)
+
+        withBuildScript("""
+            apply(from = "gradle/script.gradle.kts")
+        """)
+
+        assertThat(
+            build("-q", "ok").output.trim(),
+            equalTo("ok!")
         )
     }
 }

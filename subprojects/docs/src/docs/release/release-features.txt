@@ -1,4 +1,2 @@
- - Incremental Groovy compilation
- - Groovy compile avoidance
- - Test fixtures for Java projects
- - Manage plugin versions via settings script
+ - Full Gradle Module Metadata support
+ - Support for Java 13

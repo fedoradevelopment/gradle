@@ -29,6 +29,7 @@ import static org.gradle.util.TextUtil.normaliseFileSeparators
 import static org.gradle.workers.fixtures.WorkerExecutorFixture.ISOLATION_MODES
 
 class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
+    static final String OUTPUT_FILE_NAME = "output.txt"
     boolean isOracleJDK = TestPrecondition.JDK_ORACLE.fulfilled && (Jvm.current().jre != null)
 
     @Unroll
@@ -40,6 +41,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 text = "foo"
                 arrayOfThings = ["foo", "bar", "baz"]
                 listOfThings = ["foo", "bar", "baz"]
+                outputFile = file("${OUTPUT_FILE_NAME}")
 
                 isolationMode = ${isolationMode}
             }
@@ -49,11 +51,11 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
         succeeds("runWork")
 
         then:
-        result.groupedOutput.task(":runWork").output.contains """
-            text = foo
-            array = [foo, bar, baz]
-            list = [foo, bar, baz]
-         """.stripIndent().trim()
+        file(OUTPUT_FILE_NAME).readLines().containsAll(
+                "text = foo",
+                "array = [foo, bar, baz]",
+                "list = [foo, bar, baz]"
+        )
 
         where:
         isolationMode << ISOLATION_MODES
@@ -61,6 +63,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
 
     @Unroll
     def "can control forking via forkMode with the legacy API using fork mode #isolationMode"() {
+        executer.requireIsolatedDaemons()
         executer.withWorkerDaemonsExpirationDisabled()
 
         buildFile << """
@@ -72,6 +75,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 text = "foo"
                 arrayOfThings = ["foo", "bar", "baz"]
                 listOfThings = ["foo", "bar", "baz"]
+                outputFile = file("${OUTPUT_FILE_NAME}")
                 
                 workerConfiguration = {
                     forkMode = ${forkMode}
@@ -91,11 +95,11 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
         succeeds("runWork")
 
         then:
-        result.groupedOutput.task(":runWork").output.contains """
-            text = foo
-            array = [foo, bar, baz]
-            list = [foo, bar, baz]
-         """.stripIndent().trim()
+        file(OUTPUT_FILE_NAME).readLines().containsAll(
+                "text = foo",
+                "array = [foo, bar, baz]",
+                "list = [foo, bar, baz]"
+        )
 
         where:
         forkMode          | operator
@@ -118,6 +122,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 text = "foo"
                 arrayOfThings = ["foo", "bar", "baz"]
                 listOfThings = ["foo", "bar", "baz"]
+                outputFile = file("${OUTPUT_FILE_NAME}")
             }
         """
 
@@ -127,7 +132,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
         then:
         failureHasCause("A failure occurred while executing RunnableWithDifferentConstructor")
         failureHasCause("Could not create an instance of type RunnableWithDifferentConstructor.")
-        failureHasCause("Too many parameters provided for constructor for class RunnableWithDifferentConstructor. Expected 2, received 3.")
+        failureHasCause("Too many parameters provided for constructor for class RunnableWithDifferentConstructor. Expected 2, received 4.")
 
         where:
         isolationMode << ISOLATION_MODES
@@ -168,6 +173,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 text = "foo"
                 arrayOfThings = ["foo", "bar", "baz"]
                 listOfThings = ["foo", "bar", "baz"]
+                outputFile = file("${OUTPUT_FILE_NAME}")
             }
         """
 
@@ -178,11 +184,11 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
         optionsVerifier.verifyAllOptions()
 
         and:
-        result.groupedOutput.task(":runInDaemon").output.contains """
-            text = foo
-            array = [foo, bar, baz]
-            list = [foo, bar, baz]
-         """.stripIndent().trim()
+        file(OUTPUT_FILE_NAME).readLines().containsAll(
+                "text = foo",
+                "array = [foo, bar, baz]",
+                "list = [foo, bar, baz]"
+        )
     }
 
     def "can set a custom display name for work items in #isolationMode"() {
@@ -199,6 +205,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 text = "foo"
                 arrayOfThings = ["foo", "bar", "baz"]
                 listOfThings = ["foo", "bar", "baz"]
+                outputFile = file("${OUTPUT_FILE_NAME}")
             }
         """
 
@@ -302,18 +309,23 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 final String text
                 final String[] arrayOfThings
                 final ListProperty<String> listOfThings
+                final File outputFile
                 
                 @Inject
-                TestRunnable(String text, String[] arrayOfThings, ListProperty<String> listOfThings) {
+                TestRunnable(String text, String[] arrayOfThings, ListProperty<String> listOfThings, File outputFile) {
                     this.text = text
                     this.arrayOfThings = arrayOfThings
                     this.listOfThings = listOfThings
+                    this.outputFile = outputFile
                 }
                 
                 void run() {
-                    println "text = " + text
-                    println "array = " + arrayOfThings
-                    println "list = " + listOfThings.get()
+                    outputFile.withWriter { writer ->
+                        PrintWriter out = new PrintWriter(writer)
+                        out.println "text = " + text
+                        out.println "array = " + arrayOfThings
+                        out.println "list = " + listOfThings.get()
+                    }
                 }
             }
             
@@ -322,6 +334,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                 String text
                 String[] arrayOfThings
                 ListProperty<String> listOfThings
+                File outputFile
                 IsolationMode isolationMode = IsolationMode.AUTO
                 Class<?> runnableClass = TestRunnable.class
                 String displayName
@@ -338,7 +351,7 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
                     workerExecutor.submit(runnableClass) { config ->
                         config.isolationMode = this.isolationMode
                         config.displayName = this.displayName
-                        config.params = [text, arrayOfThings, listOfThings]
+                        config.params = [text, arrayOfThings, listOfThings, outputFile]
                         if (workerConfiguration != null) {
                             workerConfiguration.delegate = config
                             workerConfiguration(config)
@@ -371,8 +384,8 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
 
             public class OptionVerifyingRunnable extends TestRunnable {
                 @Inject
-                public OptionVerifyingRunnable(String text, String[] arrayOfThings, ListProperty<String> listOfThings) {
-                    super(text, arrayOfThings, listOfThings);
+                public OptionVerifyingRunnable(String text, String[] arrayOfThings, ListProperty<String> listOfThings, File outputFile) {
+                    super(text, arrayOfThings, listOfThings, outputFile);
                 }
 
                 public void run() {
@@ -383,6 +396,4 @@ class WorkerExecutorLegacyApiIntegrationTest extends AbstractIntegrationSpec {
             }
         """
     }
-
-
 }

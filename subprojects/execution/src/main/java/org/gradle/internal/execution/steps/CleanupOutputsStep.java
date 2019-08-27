@@ -22,9 +22,10 @@ import org.gradle.internal.execution.InputChangesContext;
 import org.gradle.internal.execution.Result;
 import org.gradle.internal.execution.Step;
 import org.gradle.internal.execution.UnitOfWork;
+import org.gradle.internal.execution.history.BeforeExecutionState;
 import org.gradle.internal.execution.impl.OutputsCleaner;
+import org.gradle.internal.file.Deleter;
 import org.gradle.internal.fingerprint.FileCollectionFingerprint;
-import org.gradle.util.GFileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,21 +35,26 @@ import java.util.Set;
 
 public class CleanupOutputsStep<C extends InputChangesContext, R extends Result> implements Step<C, R> {
 
+    private final Deleter deleter;
     private final Step<? super C, ? extends R> delegate;
 
-    public CleanupOutputsStep(Step<? super C, ? extends R> delegate) {
+    public CleanupOutputsStep(
+        Deleter deleter,
+        Step<? super C, ? extends R> delegate
+    ) {
+        this.deleter = deleter;
         this.delegate = delegate;
     }
 
     @Override
     public R execute(C context) {
-        boolean incremental = context.getInputChanges()
-            .map(inputChanges -> inputChanges.isIncremental())
-            .orElse(false);
-        if (!incremental) {
+        if (!context.isIncrementalExecution()) {
             UnitOfWork work = context.getWork();
             if (work.shouldCleanupOutputsOnNonIncrementalExecution()) {
-                if (work.hasOverlappingOutputs()) {
+                boolean hasOverlappingOutputs = context.getBeforeExecutionState()
+                    .flatMap(BeforeExecutionState::getDetectedOverlappingOutputs)
+                    .isPresent();
+                if (hasOverlappingOutputs) {
                     cleanupOverlappingOutputs(context, work);
                 } else {
                     cleanupExclusiveOutputs(work);
@@ -78,7 +84,11 @@ public class CleanupOutputsStep<C extends InputChangesContext, R extends Result>
                         throw new AssertionError();
                 }
             });
-            OutputsCleaner cleaner = new OutputsCleaner(file -> true, dir -> !outputDirectoriesToPreserve.contains(dir));
+            OutputsCleaner cleaner = new OutputsCleaner(
+                deleter,
+                file -> true,
+                dir -> !outputDirectoriesToPreserve.contains(dir)
+            );
             for (FileCollectionFingerprint fileCollectionFingerprint : previousOutputs.getOutputFileProperties().values()) {
                 try {
                     cleaner.cleanupOutputs(fileCollectionFingerprint);
@@ -93,15 +103,19 @@ public class CleanupOutputsStep<C extends InputChangesContext, R extends Result>
         work.visitOutputProperties((name, type, roots) -> {
             for (File root : roots) {
                 if (root.exists()) {
-                    switch (type) {
-                        case FILE:
-                            GFileUtils.forceDelete(root);
+                    try {
+                        switch (type) {
+                            case FILE:
+                                deleter.delete(root);
+                                break;
+                            case DIRECTORY:
+                                deleter.ensureEmptyDirectory(root, true);
                             break;
-                        case DIRECTORY:
-                            GFileUtils.cleanDirectory(root);
-                            break;
-                        default:
-                            throw new AssertionError();
+                            default:
+                                throw new AssertionError();
+                        }
+                    } catch (IOException ex) {
+                        throw new UncheckedIOException(ex);
                     }
                 }
             }

@@ -36,28 +36,28 @@ class ArtifactTransformIntegrationTest extends AbstractHttpDependencyResolutionT
         """
 
         buildFile << """
-import org.gradle.api.artifacts.transform.TransformParameters
-
-def usage = Attribute.of('usage', String)
-def artifactType = Attribute.of('artifactType', String)
-def extraAttribute = Attribute.of('extra', String)
-    
-allprojects {
-
-    dependencies {
-        attributesSchema {
-            attribute(usage)
-        }
-    }
-    configurations {
-        compile {
-            attributes { attribute usage, 'api' }
-        }
-    }
-}
-
-$fileSizer
-"""
+            import org.gradle.api.artifacts.transform.TransformParameters
+            
+            def usage = Attribute.of('usage', String)
+            def artifactType = Attribute.of('artifactType', String)
+            def extraAttribute = Attribute.of('extra', String)
+                
+            allprojects {
+            
+                dependencies {
+                    attributesSchema {
+                        attribute(usage)
+                    }
+                }
+                configurations {
+                    compile {
+                        attributes { attribute usage, 'api' }
+                    }
+                }
+            }
+            
+            $fileSizer
+        """
     }
 
     private static String getFileSizer() {
@@ -101,7 +101,7 @@ $fileSizer
         run "resolve"
 
         then:
-        outputContains("variants: [{artifactType=size}, {artifactType=size}]")
+        outputContains("variants: [{artifactType=size, org.gradle.status=release}, {artifactType=size, org.gradle.status=release}]")
         // transformed outputs should belong to same component as original
         outputContains("ids: [test-1.3.jar.txt (test:test:1.3), test2-2.3.jar.txt (test:test2:2.3)]")
         outputContains("components: [test:test:1.3, test:test2:2.3]")
@@ -334,7 +334,7 @@ $fileSizer
         executed(":common:jar", ":lib:jar1", ":lib:jar2", ":app:resolve")
 
         and:
-        outputContains("variants: [{artifactType=size, usage=api}, {artifactType=size, usage=api}, {artifactType=size}, {artifactType=size}, {artifactType=size, usage=api}, {artifactType=size, usage=api}, {artifactType=size}]")
+        outputContains("variants: [{artifactType=size, usage=api}, {artifactType=size, usage=api}, {artifactType=size}, {artifactType=size, org.gradle.status=release}, {artifactType=size, usage=api}, {artifactType=size, usage=api}, {artifactType=size, org.gradle.status=release}]")
         // transformed outputs should belong to same component as original
         outputContains("ids: [lib1.jar.txt (project :lib), lib2.jar.txt (project :lib), file1.jar.txt (file1.jar), test-1.3.jar.txt (test:test:1.3), common.jar.txt (project :common), common-file.jar.txt (project :common), test-dependency-1.3.jar.txt (test:test-dependency:1.3)]")
         outputContains("components: [project :lib, project :lib, file1.jar, test:test:1.3, project :common, project :common, test:test-dependency:1.3]")
@@ -871,7 +871,7 @@ $fileSizer
         succeeds "resolve"
 
         then:
-        outputContains("variants: [{artifactType=size}, {artifactType=size}, {artifactType=size}, {artifactType=size}]")
+        outputContains("variants: [{artifactType=size, org.gradle.status=release}, {artifactType=size, org.gradle.status=release}, {artifactType=size, org.gradle.status=release}, {artifactType=size, org.gradle.status=release}]")
         outputContains("ids: [test-1.3.jar.A.txt (test:test:1.3), test-1.3.jar.B.txt (test:test:1.3), test2-2.3.jar.A.txt (test:test2:2.3), test2-2.3.jar.B.txt (test:test2:2.3)]")
         outputContains("components: [test:test:1.3, test:test:1.3, test:test2:2.3, test:test2:2.3]")
         file("build/libs").assertHasDescendants("test-1.3.jar.A.txt", "test-1.3.jar.B.txt", "test2-2.3.jar.A.txt", "test2-2.3.jar.B.txt")
@@ -1382,7 +1382,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("broken")
 
         and:
@@ -1432,7 +1432,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Could not download test-impl.jar (test:test:1.3)")
+        failure.assertHasCause("Could not download test-impl-1.3.jar (test:test:1.3)")
 
         and:
         outputContains("Transforming test-api-1.3.jar to test-api-1.3.jar.txt")
@@ -1508,7 +1508,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("Execution failed for ToNullTransform: ${file("a.jar").absolutePath}.")
         failure.assertHasCause("Transform returned null result.")
     }
@@ -1537,7 +1537,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("Transform output this_file_does_not.exist must exist.")
 
         when:
@@ -1601,7 +1601,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertThatCause(matchesRegexp("Transform ${failureMessage}."))
 
         when:
@@ -1729,7 +1729,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("Transform output ${testDirectory.file('other.jar')} must be a part of the input artifact or refer to a relative path.")
     }
 
@@ -1769,7 +1769,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("Transform output ${testDirectory.file('other.jar')} must be a part of the input artifact or refer to a relative path.")
     }
 
@@ -1800,7 +1800,7 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'a.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform a.jar to match attributes {artifactType=size}")
         failure.assertHasCause("Could not create an instance of type BrokenTransform.")
         failure.assertHasCause("broken")
     }
@@ -1856,10 +1856,10 @@ Found the following transforms:
         then:
         failure.assertHasDescription("Execution failed for task ':resolve'.")
         failure.assertHasCause("Could not resolve all files for configuration ':compile'.")
-        failure.assertHasCause("Failed to transform file 'broken.jar' to match attributes {artifactType=size}")
+        failure.assertHasCause("Failed to transform broken.jar to match attributes {artifactType=size}")
         failure.assertHasCause("broken: broken.jar")
-        failure.assertHasCause("Could not download a.jar (test:a:1.3)")
-        failure.assertHasCause("Failed to transform artifact 'broken.jar (test:broken:2.0)' to match attributes {artifactType=size}")
+        failure.assertHasCause("Could not download a-1.3.jar (test:a:1.3)")
+        failure.assertHasCause("Failed to transform broken-2.0.jar (test:broken:2.0) to match attributes {artifactType=size, org.gradle.status=release}")
         failure.assertHasCause("broken: broken-2.0.jar")
 
         and:

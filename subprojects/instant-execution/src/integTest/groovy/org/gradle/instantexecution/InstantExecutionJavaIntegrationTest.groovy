@@ -62,6 +62,37 @@ class InstantExecutionJavaIntegrationTest extends AbstractInstantExecutionIntegr
         new ZipTestFixture(jarFile).assertContainsFile("Thing.class")
     }
 
+    def "clean on Java build with a single source file and no dependencies"() {
+        given:
+        settingsFile << """
+            rootProject.name = 'somelib'
+        """
+        buildFile << """
+            plugins { id 'java' }
+        """
+        file("src/main/java/Thing.java") << """
+            class Thing {
+            }
+        """
+        def buildDir = file("build")
+        buildDir.mkdirs()
+
+        expect:
+        instantRun "clean"
+        instantExecution.assertStateStored()
+        result.assertTasksExecuted(":clean")
+        !buildDir.exists()
+
+        when:
+        buildDir.mkdirs()
+        instantRun "clean"
+
+        then:
+        instantExecution.assertStateLoaded()
+        result.assertTasksExecuted(":clean")
+        !buildDir.exists()
+    }
+
     def "assemble on Java build with multiple source directories"() {
         given:
         settingsFile << """
@@ -224,7 +255,7 @@ class InstantExecutionJavaIntegrationTest extends AbstractInstantExecutionIntegr
         """
         buildFile << """
             plugins { id 'java' }
-            repositories { jcenter() }
+            ${jcenterRepository()}
             dependencies { testImplementation "junit:junit:4.12" }
         """
         file("src/main/java/Thing.java") << """

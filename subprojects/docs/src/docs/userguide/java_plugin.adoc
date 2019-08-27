@@ -173,6 +173,7 @@ include::sample[dir="java/customizedLayout/groovy", files="build.gradle[tags=def
 include::sample[dir="java/customizedLayout/kotlin", files="build.gradle.kts[tags=define-main]"]
 ====
 
+[[source_sets]]
 == Source sets
 
 The plugin adds the following <<building_java_projects.adoc#sec:java_source_sets,source sets>>:
@@ -285,7 +286,8 @@ include::sample[dir="userguide/java/sourceSets/kotlin", files="build.gradle.kts[
 [[sec:java_plugin_and_dependency_management]]
 == Dependency management
 
-The Java plugin adds a number of <<managing_dependency_configurations.adoc#managing_dependency_configurations,dependency configurations>> to your project, as shown below. Tasks such as `compileJava` and `test` then use one or more of those configurations to get the corresponding files and use them, for example by placing them on a compilation or runtime classpath.
+The Java plugin adds a number of <<declaring_dependencies.adoc#sec:what-are-dependency-configurations,dependency configurations>> to your project, as shown below.
+Tasks such as `compileJava` and `test` then use one or more of those configurations to get the corresponding files and use them, for example by placing them on a compilation or runtime classpath.
 
 [[tab:configurations]]
 === Dependency configurations
@@ -463,7 +465,7 @@ See the <<java_testing.adoc#java_testing,Testing in Java & JVM projects>> chapte
 == Publishing
 
 `components.java`::
-A link:{javadocPath}/org/gradle/api/component/SoftwareComponent.html[SoftwareComponent] for <<publishing_overview.adoc#publishing_overview,publishing>> the production JAR created by the `jar` task. This component includes the runtime dependency information for the JAR.
+A link:{javadocPath}/org/gradle/api/component/SoftwareComponent.html[SoftwareComponent] for <<publishing.adoc#publishing_overview,publishing>> the production JAR created by the `jar` task. This component includes the runtime dependency information for the JAR.
 
 [[sec:incremental_compile]]
 == Incremental Java compilation
@@ -668,6 +670,10 @@ Many popular annotation processors support incremental annotation processing (se
 
 | MapStruct
 | link:https://github.com/mapstruct/mapstruct/issues/1420[Open issue]
+| N/A
+
+| link:https://github.com/square/AssistedInject[Assisted Inject]
+| link:https://github.com/square/AssistedInject/blob/master/CHANGELOG.md#version-050-2019-08-08[0.5.0]
 | N/A
 
 | Realm

@@ -28,6 +28,7 @@ import java.util.Enumeration;
 public class DefaultDeprecatedClassLoader extends ClassLoader implements DeprecatedClassloader {
 
     private static final String BUILDSRC_IN_SETTINGS_DEPRECATION_WARNING = "Access to the buildSrc project and its dependencies in settings scripts";
+
     private final ClassLoader deprecatedUsageLoader;
     private final ClassLoader nonDeprecatedParent;
 
@@ -112,11 +113,15 @@ public class DefaultDeprecatedClassLoader extends ClassLoader implements Depreca
 
     @Override
     public void close() throws IOException {
-        ClassLoaderUtils.tryClose(deprecatedUsageLoader);
+        if (deprecatedUsageLoader instanceof Closeable) {
+            ((Closeable) deprecatedUsageLoader).close();
+        }
 
         // not sure if this is required as its the parent of
         // deprecatedUsageLoader already
-        ClassLoaderUtils.tryClose(nonDeprecatedParent);
+        if (nonDeprecatedParent instanceof Closeable) {
+            ((Closeable) nonDeprecatedParent).close();
+        }
     }
 
     @Override

@@ -47,7 +47,7 @@ class BuildSrcDeprecatedInSettingsIntegrationTest extends AbstractIntegrationSpe
             }
 
             dependencies {  
-                compile 'org.apache.commons:commons-math3:3.6.1'                
+                implementation 'org.apache.commons:commons-math3:3.6.1'                
             }
         """
 
@@ -107,7 +107,7 @@ class BuildSrcDeprecatedInSettingsIntegrationTest extends AbstractIntegrationSpe
             }
 
             dependencies {  
-                compile 'org.apache.commons:commons-math3:3.6.1'                
+                implementation 'org.apache.commons:commons-math3:3.6.1'                
             }
         """
 
@@ -176,7 +176,7 @@ class BuildSrcDeprecatedInSettingsIntegrationTest extends AbstractIntegrationSpe
             }
 
             dependencies {  
-                compile 'org.apache.commons:commons-math3:3.6.1'                
+                implementation 'org.apache.commons:commons-math3:3.6.1'                
             }
         """
 
